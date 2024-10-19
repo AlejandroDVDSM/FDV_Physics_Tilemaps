@@ -2,7 +2,7 @@
 
 # Físicas 2D
 
-## **_1. Crear una escena simple sobre la que probar diferentes configuraciones de objetos físicos en Unity._**
+## **1. Crear una escena simple sobre la que probar diferentes configuraciones de objetos físicos en Unity.**
 
 Añadimos dos personajes en la escena y un rectángulo. Uno de esos personajes, será controlado por el jugador con un sencillo script de movimiento, mientras que el otro será un "enemigo", aunque no tenga ningún script particular.
 Ambos personajes serán nuestros sujetos de prueba para los siguientes apartados. Por otro lado, el rectángulo servirá como un suelo para que los personajes no caigan al vacío cuando empecemos a añadir físicas.
@@ -61,7 +61,7 @@ Cambiamos el `Rigidbody2D.BodyType` del enemigo a `Kinematic`.
 
 ![Ejercicio1g](https://github.com/user-attachments/assets/3133ff05-c754-4aaa-9ee3-4896a1828c76)
 
-## **_2. Incorpora elementos físicos en tu escena que respondan a las siguientes restricciones:_**
+## **2. Incorpora elementos físicos en tu escena que respondan a las siguientes restricciones:**
 
 ### _a. Objeto estático que ejerce de barrera infranqueable_
 
@@ -103,9 +103,11 @@ Luego, nos dirigimos a `Edit > Preferences > Physics 2D > Layer Collision Matrix
 
 ![Ejercicio2e](https://github.com/user-attachments/assets/86da774d-6851-414d-b1ec-78b10100a710)
 
+El script empleado para esta actividad se puede encontrar en `Assets/Scripts/PhysicsExercises/PlayerMovement.cs`
+
 # Tilemaps
 
-## **_1. Construir un mapa de juego._**
+## **1. Construir un mapa de juego.**
 
 Desde la pestaña _"Hierarchy"_ hacemos click derecho y seleccionamos `2D Object > Tilemap > Rectangular` para crear el tilemap. Ahora pinchamos en el objeto recién creado y pulsamos el botón _"Open Tile Palette"_ que debe aparecer en la pestaña _"Scene"_. Esto abrirá la pestaña _"Tile Palette"_, donde podremos crear una nueva paleta.
 
@@ -121,7 +123,7 @@ Ahora, vamos seleccionamos el asset que nos interese y lo pintamos en la escena.
 
 Por el momento solo hemos pintado el fondo, que representa un cielo.
 
-## _2. Usar varios tilemaps._
+## 2. Usar varios tilemaps.
 
 ### _a. Crea dos Tilemaps adicionales, uno puede representar elementos decorativos y otro obstáculos._
 
@@ -141,7 +143,7 @@ Añadimos el componente `TilemapCollider2D` en `Tilemap_Ground`, marcando la opc
 
 ![Ejercicio2b](https://github.com/user-attachments/assets/a8536fcc-404f-4f23-899e-7a21d34833ad)
 
-## _3. Implementar un control de personajes basado en físicas._
+## 3. Implementar un control de personajes basado en físicas.
 
 ### _a. Movimiento basado en físicas_
 
@@ -199,29 +201,37 @@ Primero, crearemos una etiqueta llamada _"Ground"_ se la aplicaremos a `Tilemap_
 
 ![image](https://github.com/user-attachments/assets/8063d8bd-8ad9-4bbb-8f1d-8b8ec1a4d054)
 
-Luego, añadiremos dos nuevas variables 
-* `bool _isJumping`: la usaremos para evitar que el jugador salte cuando no esté en el suelo.
+A continuación, incrementamos el `Rigidbody2D.GravityScale` del jugador a 5 para que la gravedad afecte con más fuerza al personaje y empiece a caer de forma natural cuando alcanza su punto más alto durante un salto.
+
+Luego, añadiremos tres nuevas variables:
+* `bool _isJumping`: la usaremos para evitar que el jugador pueda saltar infinitamente.
+* `bool _isGrounded`: nos indicará si el jugador se encuentra en el suelo.
 * `float _jumpForce`: la fuerza que se empleará en el salto.
 
-Ahora, desde el método `FixedUpdate()`, comprobamos si la barra espaciadora se ha pulsado y el jugador no se encuentre en medio de un salto. Si ese es el caso, pondremos `_isJumping` a `true` y emplearemos el método `Rigidbody2D.AddForce(Vector2 force, ForceMode2D mode)`.
+Ahora, desde el método `Update()`, comprobamos que la barra espaciadora se ha pulsado y que el jugador no se encuentre en medio de un salto. Si ese es el caso, pondremos `_isJumping` a `true` y desde `FixedUpdate()` emplearemos el método `Rigidbody2D.AddForce(Vector2 force, ForceMode2D mode)`.
 
 ```c#
+
+private void Update() {
+    // ....
+    if (Input.GetKeyDown(KeyCode.Space) && !_isJumping)
+        _isJumping = true;
+}
+
 private void FixedUpdate()
 {
-    if (_horizontalMovement != 0)
-    {
+    if (_horizontalMovement != 0 && _isGrounded)
         _rigidbody2D.MovePosition(transform.position + _direction * (_moveSpeed * Time.fixedDeltaTime));
-    }
-    
-    if (Input.GetKeyDown(KeyCode.Space) && !_isJumping)
+
+    if (_isJumping && _isGrounded)
     {
-        _isJumping = true;
-        _rigidbody2D.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
+        _isGrounded = false;
+        _rigidbody2D.AddForce(new Vector2(_horizontalMovement / 2, 1) * _jumpForce, ForceMode2D.Impulse);
     }
 }
 ```
 
-Para terminar, cuando el jugador haya colisionado con el suelo tras el salto, se volverá a poner `_isJumping` a `false`.
+Para terminar, cuando el jugador haya colisionado con el suelo tras el salto, se volverá a poner `_isJumping` a `false` y `_isGrounded` a `true`.
 
 ```c#
 private void OnCollisionEnter2D(Collision2D other)
@@ -231,10 +241,114 @@ private void OnCollisionEnter2D(Collision2D other)
     if (other.gameObject.CompareTag("Ground"))
     {
         _isJumping = false;
-        _rigidbody2D.velocity = new Vector2(_rigidbody2D.velocity.x, 0);
+        _isGrounded = true;
+        _rigidbody2D.velocity = Vector2.zero; // Cancel any remaining speed
     }
 }
 ```
 
-![Ejercicio3b](https://github.com/user-attachments/assets/6b4cc985-e662-4b97-b16d-46205ea458cd)
+![Ejercicio3b](https://github.com/user-attachments/assets/e4765257-9bc6-4219-bc93-803c7c1e3bc8)
 
+## 4. Implementar las siguientes mecánicas relacionadas con plataformas:
+
+### _a. Salto a una plataforma_
+
+Lo primero que haremos será hacer que el sprite del jugador sea hijo de `Tilemap_Ground` y crear otro tilemap más al que se le incluirá la etiqueta _"Ground"_. Este nuevo tilemap consistirá en plataformas flotantes que se moverán de izquierda a derecha. Su lógica se puede encontrar en `Assets/Scripts/TilemapExercises/FloatingGround.cs`.
+
+Como la plataforma está en constante movimiento, si el jugador salta y se sitúa encima de esta, se acabará cayendo. Por ende, cada vez que el jugador colisione con una plataforma flotante o con el suelo su padre será modificado para convertir su sistema de referencia.
+
+Para lograr esto, desde el script que contiene la lógica para el movimiento se añadirá la línea `transform.SetParent(Transform parent)` en el método `OnCollisionEnter2D()` y `OnCollisionExit2D()`.
+```c#
+private void OnCollisionEnter2D(Collision2D other)
+{
+    Debug.Log($"<{gameObject.name}> has collided with <{other.gameObject.name}>");
+
+    if (other.gameObject.CompareTag("Ground"))
+    {
+        _isJumping = false;
+        _isGrounded = true;
+        _rigidbody2D.velocity = Vector2.zero; // Cancel any remaining speed
+        transform.SetParent(other.gameObject.transform);
+    }
+}
+```
+
+```c#
+private void OnCollisionExit2D(Collision2D _)
+{
+    transform.SetParent(null);
+}
+```
+
+![Ejercicio4a](https://github.com/user-attachments/assets/e6f25b65-d998-4643-96ea-d7c24513d8ff)
+
+### _b. Manejar colisiones con elementos de una capa determinada._
+
+Creamos la layer _"Ground"_ y sustituimos la línea `if (other.gameObject.CompareTag("Ground"))` en el método `OnCollisionEnter2D()` por `if (other.gameObject.layer == LayerMask.NameToLayer("Ground"))`.
+De esta forma, se ignorará cualquier colisión que no pertenezca a la capa _"Ground"_.
+
+### _c. Plataformas invisibles que se vuelven visibles._
+
+Se añade otra layer llamada _"InvisiblePlatform"_ y se le asigna a un nuevo tilemap.
+
+![image](https://github.com/user-attachments/assets/4b6f0798-53c1-4138-955e-990f490a542a)
+
+Para hacer que los tiles sean invisibles, se desactiva el componente `TilemapRenderer` de `Tilemap_InvisiblePlatforms`.
+
+![image](https://github.com/user-attachments/assets/48b22f11-32ae-446f-aa66-6359b69e978b)
+
+La acción que se realizará cuando se colisione con estas plataformas invisibles será aplicar una fuerza que eleve al jugador en el eje positivo de la Y y volver estas plataformas visibles.
+
+```c#
+private void OnCollisionEnter2D(Collision2D other)
+{
+    Debug.Log($"<{gameObject.name}> has collided with <{other.gameObject.name}>");
+
+    if (other.gameObject.layer == LayerMask.NameToLayer("Ground") || other.gameObject.layer == LayerMask.NameToLayer("InvisiblePlatform"))
+    {
+        _isJumping = false;
+        _isGrounded = true;
+        _rigidbody2D.velocity = Vector2.zero; // Cancel any remaining speed
+        transform.SetParent(other.gameObject.transform);
+    }
+
+    if (other.gameObject.layer == LayerMask.NameToLayer("InvisiblePlatform"))
+    {
+        other.gameObject.GetComponent<TilemapRenderer>().enabled = true;
+        _rigidbody2D.AddForce(Vector3.up * 25, ForceMode2D.Impulse);
+    }
+}
+```
+
+![Ejercicio4c](https://github.com/user-attachments/assets/7ccbf042-9a95-44c4-ac74-94b06b41aab6)
+
+### _d. Mecánica de recolección._
+
+Añadimos los objetos que serán coleccionados a la escena y le asignamos la capa _"Item"_. Cada objeto ha de tener un componente de tipo `Collider2D` y un `Rigidbody2D` cuyo `BodyType` esté establecido como `Kinematic`.
+
+![image](https://github.com/user-attachments/assets/3f98bfe6-333d-4624-a0b6-00c7d68993a2)
+
+Cada objeto recolectado incrementará nuestra puntuación, por tanto, creamos una UI para mostrarla:
+
+![image](https://github.com/user-attachments/assets/827048e7-a342-49bf-a178-888bb86cc0ab)
+
+Ahora, añadimos las siguientes variables a nuestro script:
+* `[SerializeField] float _jumpForceIncreaser`: el incremento que se añadirá a la fuerza del salto por cada objeto recolectado.
+* `[SerializeField] TMP_Text _scoreTxt`: la referencia al texto que muestra la puntuación.
+* `int _collectiedItems`: el número de objetos colecionados por el jugador.
+
+Ahora, en `OnCollisionEnter2D()`, añadimos las siguientes líneas de código:
+
+```c#
+if (other.gameObject.layer == LayerMask.NameToLayer("Item"))
+{
+    _collectedItems++;
+    _scoreTxt.text = $"Score: {_collectedItems}";
+    _jumpForce += _jumpForceIncreaser;
+    Destroy(other.gameObject);
+}
+```
+
+![Ejercicio4d](https://github.com/user-attachments/assets/5613902a-aaf7-4312-bd14-992e522af1e3)
+
+El script empleado para esta actividad se puede encontrar en `Assets/Scripts/TilemapExercises/PlayerTilemapMovement.cs`
