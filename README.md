@@ -105,3 +105,136 @@ Luego, nos dirigimos a `Edit > Preferences > Physics 2D > Layer Collision Matrix
 
 # Tilemaps
 
+## **_1. Construir un mapa de juego._**
+
+Desde la pestaña _"Hierarchy"_ hacemos click derecho y seleccionamos `2D Object > Tilemap > Rectangular` para crear el tilemap. Ahora pinchamos en el objeto recién creado y pulsamos el botón _"Open Tile Palette"_ que debe aparecer en la pestaña _"Scene"_. Esto abrirá la pestaña _"Tile Palette"_, donde podremos crear una nueva paleta.
+
+![image](https://github.com/user-attachments/assets/de8abcbb-4a93-4a37-a458-d7fc7c0ef426)
+
+Con la paleta recién creada, seleccionamos los sprites que nos interese incluir en el mapa y los arrastramos hasta nuestra paleta.
+
+![image](https://github.com/user-attachments/assets/4b8a664e-3186-4dd7-b740-ddf6d26c2b91)
+
+Ahora, vamos seleccionamos el asset que nos interese y lo pintamos en la escena.
+
+![image](https://github.com/user-attachments/assets/a8b10b31-b6f2-4f24-815e-2758032dc084)
+
+Por el momento solo hemos pintado el fondo, que representa un cielo.
+
+## _2. Usar varios tilemaps._
+
+### _a. Crea dos Tilemaps adicionales, uno puede representar elementos decorativos y otro obstáculos._
+
+Por el momento solo tenemos el cielo pintado en nuestro mapa. Es hora de crear un nuevo tilemap llamado `Tilemap_Ground` que represente la superficie por la que caminará el jugador.
+
+![image](https://github.com/user-attachments/assets/21ba025f-bf85-4a5b-9d41-d684077386a1)
+
+Además, se creará un tilemap más para añadir algo de vida al juego. Este nuevo tilemap es `Tilemap_Decoration`.
+
+![image](https://github.com/user-attachments/assets/d9ded930-28b7-4554-9f04-a22beba8141d)
+
+### _b. Agrega a la capa de obstáculos la configuración necesaria para que el Tilemap se construya de forma independiente y el obstáculo actúe como tal._
+
+Añadimos el componente `TilemapCollider2D` en `Tilemap_Ground`, marcando la opción `UsedByComposite`. A continuación, añadimos el componente `CompositeCollider2D`, que añadirá automáticamente un `Rigidbody2D`. Por último, establecemos el `Rigidbody2D.BodyType` a `Static`, para que no se vea afectado por las físicas y se caiga al vacío. 
+
+![image](https://github.com/user-attachments/assets/9796291b-94f2-4384-bf13-a3d04f4920f6)
+
+![Ejercicio2b](https://github.com/user-attachments/assets/a8536fcc-404f-4f23-899e-7a21d34833ad)
+
+## _3. Implementar un control de personajes basado en físicas._
+
+### _a. Movimiento basado en físicas_
+
+Añadimos las siguientes variables:
+
+* `_moveSpeed`: indicará la velocidad del jugador.
+* `_horizontalMovement`: indicará si el jugador se está moviendo. Y en caso de hacerlo, su valor será -1 si se mueve en el eje negativo de la X o 1 si lo hace en el positivo.
+* `_direction`: la dirección a la que debe moverse el jugador.
+* `_rigidbody2D`: la referencia al `Rigidbody2D` del jugador. Está será inicializada en el método `Start()` con la ayuda del método `GetComponent<T>()`.
+
+También se crearán más variables, pero solo se han comentado las empleadas para el movimiento.
+
+```c#
+[SerializeField] private float _moveSpeed = 10.0f;
+
+private float _horizontalMovement;
+private Vector3 _direction;
+
+private Rigidbody2D _rigidbody2D;
+```
+
+En el método `Update()`, comprobamos si el jugador está pulsando las teclas `A`, `S`, `<-` o `->`. En caso de que lo esté haciendo, modificamos `_direction`.
+
+```c#
+private void Update()
+{
+    _horizontalMovement = Input.GetAxisRaw("Horizontal");
+
+    if (_horizontalMovement != 0)
+    {
+        _animator.SetBool(IsWalking, true);
+        _spriteRenderer.flipX = _horizontalMovement > 0;
+        
+        _direction = new Vector3(_horizontalMovement, 0, 0).normalized;
+    }
+```
+
+Finalmente, desde el método `FixedUpdate()`, emplearemos el método `Rigidbody2D.MovePosition(Vector2 position)` para lograr nuestro objetivo.
+
+```c#
+private void FixedUpdate()
+{
+    if (_horizontalMovement != 0)
+    {
+        _rigidbody2D.MovePosition(transform.position + _direction * (_moveSpeed * Time.fixedDeltaTime));
+    }
+}
+```
+
+No se incluye ningún gif del resultado porque ya se ha visto en los apartados anteriores.
+
+### _b. Salto_
+
+Primero, crearemos una etiqueta llamada _"Ground"_ se la aplicaremos a `Tilemap_Ground`.
+
+![image](https://github.com/user-attachments/assets/8063d8bd-8ad9-4bbb-8f1d-8b8ec1a4d054)
+
+Luego, añadiremos dos nuevas variables 
+* `bool _isJumping`: la usaremos para evitar que el jugador salte cuando no esté en el suelo.
+* `float _jumpForce`: la fuerza que se empleará en el salto.
+
+Ahora, desde el método `FixedUpdate()`, comprobamos si la barra espaciadora se ha pulsado y el jugador no se encuentre en medio de un salto. Si ese es el caso, pondremos `_isJumping` a `true` y emplearemos el método `Rigidbody2D.AddForce(Vector2 force, ForceMode2D mode)`.
+
+```c#
+private void FixedUpdate()
+{
+    if (_horizontalMovement != 0)
+    {
+        _rigidbody2D.MovePosition(transform.position + _direction * (_moveSpeed * Time.fixedDeltaTime));
+    }
+    
+    if (Input.GetKeyDown(KeyCode.Space) && !_isJumping)
+    {
+        _isJumping = true;
+        _rigidbody2D.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
+    }
+}
+```
+
+Para terminar, cuando el jugador haya colisionado con el suelo tras el salto, se volverá a poner `_isJumping` a `false`.
+
+```c#
+private void OnCollisionEnter2D(Collision2D other)
+{
+    Debug.Log($"<{gameObject.name}> has collided with <{other.gameObject.name}>");
+
+    if (other.gameObject.CompareTag("Ground"))
+    {
+        _isJumping = false;
+        _rigidbody2D.velocity = new Vector2(_rigidbody2D.velocity.x, 0);
+    }
+}
+```
+
+![Ejercicio3b](https://github.com/user-attachments/assets/6b4cc985-e662-4b97-b16d-46205ea458cd)
+
